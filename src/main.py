@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-
+from include.constantes import *
 
 def main() -> None:
     read()
@@ -12,7 +12,7 @@ def read() -> None:
     # Guarda las rutas enteras, cogiendo la ruta del script y añadiendo el
     # nombre del archivo(que debe ser mentores.xlsx y mentorizados.xlsx):
     base_dir = os.path.dirname(__file__)
-    ruta_excel = os.path.join(base_dir, "mentores.xlsx")
+    ruta_excel = os.path.join(base_dir, ARCHIVO_MENTORES)
     valid = True
     try:
         # El lector de excel de pandas devuelve un DataFrame, es decir, las tablas
@@ -20,7 +20,7 @@ def read() -> None:
     except FileNotFoundError:
         print("El nombre del archivo no es correcto:mentores.xlsx, o no esta el archivo")
         valid = False
-    ruta_excel = os.path.join(base_dir, "mentorizados.xlsx")
+    ruta_excel = os.path.join(base_dir, ARCHIVO_MENTORIZADOS)
     try:
         mentorizados = pd.read_excel(ruta_excel)
     except FileNotFoundError:
@@ -90,22 +90,23 @@ def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
             mentorizados = lista_mentorizados[j]
             c_puntuacion = 0
 
-            if mentores[0] == mentorizados[0]:  # ¿Vives en Ciudad Real?
-                c_puntuacion += 1
-            if mentores[1] == mentorizados[1]:  # Pueblo/Ciudad
-                c_puntuacion += 2
-            if mentores[2] == mentorizados[2]:  # Qué has estudiado
-                c_puntuacion += 2
-            if mentores[3] == mentorizados[3]:  # Modalidad
-                c_puntuacion += 5
-            if mentores[4] == mentorizados[4]:  # Deporte
-                c_puntuacion += 2
-            if mentores[5] == mentorizados[5]:  # Fútbol
-                c_puntuacion += 3
-            if mentores[6] == mentorizados[6]:  # Anime
-                c_puntuacion += 3
-            if mentores[7] == mentorizados[7]:  # Videojuegos / salir
-                c_puntuacion += 3
+            if mentores[0] == mentorizados[0]:
+                c_puntuacion += PUNTUACION_CIUDAD
+            if mentores[1] == mentorizados[1]:
+                c_puntuacion += PUNTUACION_PUEBLO_CIUDAD
+            if mentores[2] == mentorizados[2]:
+                c_puntuacion += PUNTUACION_ESTUDIOS
+            if mentores[3] == mentorizados[3]:
+                c_puntuacion += PUNTUACION_MODALIDAD
+            if mentores[4] == mentorizados[4]:
+                c_puntuacion += PUNTUACION_DEPORTES
+            if mentores[5] == mentorizados[5]:
+                c_puntuacion += PUNTUACION_FUTBOL
+            if mentores[6] == mentorizados[6]:
+                c_puntuacion += PUNTUACION_ANIME
+            if mentores[7] == mentorizados[7]:
+                c_puntuacion += PUNTUACION_VIDEOJUEGOS
+
 
             # Convierte los gustos musicales en una lista separada por ; luego en un set que son más fáciles de comparar
             gustos_mentores = set(str(mentores[8]).split(";"))
@@ -113,7 +114,7 @@ def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
             # La función & de sets devuelve la intersección entre ambos sets
             coincidencias = gustos_mentores & gustos_mentorizados
             # Por cada gusto de musica igual, se suma 2
-            c_puntuacion += 2 * len(coincidencias)
+            c_puntuacion += PUNTUACION_GUSTOS_MUSICALES * len(coincidencias)
 
             puntuaciones[i][j] = c_puntuacion
     return puntuaciones
@@ -133,7 +134,7 @@ def mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados) -> None:
     print("\n--- TABLA DE PUNTUACIONES ---\n")
     print(tabla_final)
     # Crea un excel con la tabla final(cambiar tu ruta)
-    # tabla_final.to_excel(r"C:\Users\USUARIO\Downloads\ej.xlsx", index=False)
+    # tabla_final.to_excel(r"RUTA_SALIDA", index=False)
 
 
 def maximizar_matching_hungaro(puntuaciones):
