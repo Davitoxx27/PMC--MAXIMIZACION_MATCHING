@@ -3,7 +3,7 @@
 - `mentores.xlsx` 
 - `mentorizados.xlsx` 
 
-Deben seguir el formato del forms dado, y ambos archivos deben estar en la carpeta src.
+Deben seguir el formato del forms dado, y ambos archivos deben estar en la carpeta src/data.
 
 ## 2. Función
         1. Lee los Excel de mentores y mentorizados.
@@ -30,4 +30,11 @@ hace lo mismo y mucho más limpio siendo la complejidad:
 - Backtracking O(n!)
 - Método Húngaro O(n^3)
 
-Para ello es necesario instalar con el comando: pip install scipy
+El método húngaro maximiza/minimiza el coste total de emparejamiento
+entre dos conjuntos.En este caso se transforma la matriz de puntuaciones en matriz
+para en lugar de minimizar costes poder maximizar puntuaciones.
+
+## 5. Requirimientos:
+
+Para poder usar el algoritmo es necesario instalarlo con el comando: pip install scipy
+

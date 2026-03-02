@@ -4,11 +4,25 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from include.constantes import *
 
+# @author: David Calzado Olmo
+
 def main() -> None:
+    """
+    
+    La función de este programa:
+    1. Lee dos archivos Excel con respuestas de un formulario.
+    2. Calcula una puntuación de compatibilidad entre cada mentor y mentorizado.
+    3. Genera una matriz de puntuaciones.
+    4. Aplica el algoritmo Húngaro para obtener el emparejamiento óptimo.
+
+    """
     read()
 
 
 def read() -> None:
+    """Lee los excels de mentores y mentorizados, comprueba que son válidos y 
+    llama a la función para guardar los excels con las puntuaciones"""
+    
     # Guarda las rutas enteras, cogiendo la ruta del script y añadiendo el
     # nombre del archivo(que debe ser mentores.xlsx y mentorizados.xlsx):
     base_dir = os.path.dirname(__file__)
@@ -33,13 +47,14 @@ def read() -> None:
     if "Nombre" not in mentorizados.columns or mentorizados["Nombre"].empty:
         valid = False
     if valid:
-        guardar_excels(mentores, mentorizados)
+        crear_dataframes(mentores, mentorizados)
     else:
         print("Saliendo del programa...\n")
 
 
-def guardar_excels(mentores, mentorizados) -> None:
-
+def crear_dataframes(mentores: pd.DataFrame, mentorizados: pd.DataFrame) -> None:
+    """Crea los dataframes con los resultados finales, llamando a las funciones para comparar los vectores"""
+    
     dataframe_final = []
     lista_mentores = []
     lista_mentorizados = []
@@ -49,36 +64,41 @@ def guardar_excels(mentores, mentorizados) -> None:
     # Guardar cada fila como lista, desde columna 3 en adelante y la añade al final de la lista
     for i in range(len(mentores)):
         vector_mentor = mentores.iloc[i, 3:12].tolist()
-        # Comprobar que tiene al menos 9 columnas (plantilla forms)
-        if len(vector_mentor) >= 9:
+        
+        # Comprobar que tiene 9 columnas (plantilla forms)
+        if len(vector_mentor) == 9:
             lista_mentores.append(vector_mentor[0:9])
             nombres_mentores.append(mentores.at[i, "Nombre"])
-
+        else:
+            print(f"ERROR: Fila {i} de mentores no tiene 9 columnas de respuestas como la plantilla")
+            
     for i in range(len(mentorizados)):
         vector_mentorizados = mentorizados.iloc[i, 3:].tolist()
-        if len(vector_mentorizados) >= 9:
+        if len(vector_mentorizados) == 9:
             lista_mentorizados.append(vector_mentorizados[0:9])
             nombres_mentorizados.append(mentorizados.at[i, "Nombre"])
     # Si las listas estan vacias, se devuelve falso
     if lista_mentores and lista_mentorizados:
         puntuaciones = comparar_vectores(lista_mentores, lista_mentorizados)
         mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados)
-        parejas, suma_total = maximizar_matching_hungaro(puntuaciones)
+        parejas = maximizar_matching_hungaro(puntuaciones)
         print("\n--- MEJOR EMPAREJAMIENTO ---\n")
 
     # Creamos el dataframe de los resultados finales
         for mentor_idx, mentorizado_idx in parejas:
             puntuacion = puntuaciones[mentor_idx, mentorizado_idx]
             dataframe_final.append({"Mentor": nombres_mentores[mentor_idx], "Mentorizado": nombres_mentorizados[mentorizado_idx], "Puntuación": puntuacion})    
-            # print(f"{nombres_mentores[mentor_idx]} → {nombres_mentorizados[mentorizado_idx]} (Puntuación: {puntuacion})")
+
         tabla_final = pd.DataFrame(dataframe_final)
         print(tabla_final)
     else:
         print("No hay filas válidas con al menos 9 columnas de respuestas.\n")
 
 
-def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
-
+def comparar_vectores(lista_mentores: list[list[str]], lista_mentorizados: list[list[str]]) -> np.ndarray:
+    """Construye una matriz 2d (n_mentores x n_mentorizados)
+       donde cada [i][j] representa la puntuación entre el mentor i y el mentorizado j."""
+    
     num_mentores = len(lista_mentores)
     num_mentorizados = len(lista_mentorizados)
 
@@ -90,7 +110,7 @@ def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
             mentorizados = lista_mentorizados[j]
             c_puntuacion = 0
 
-            if mentores[0] == mentorizados[0]:
+            if mentores[0] == mentorizados[0]: 
                 c_puntuacion += PUNTUACION_CIUDAD
             if mentores[1] == mentorizados[1]:
                 c_puntuacion += PUNTUACION_PUEBLO_CIUDAD
@@ -111,7 +131,7 @@ def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
             # Convierte los gustos musicales en una lista separada por ; luego en un set que son más fáciles de comparar
             gustos_mentores = set(str(mentores[8]).split(";"))
             gustos_mentorizados = set(str(mentorizados[8]).split(";"))
-            # La función & de sets devuelve la intersección entre ambos sets
+            # La función & de sets devuelve la intersec entre ambos sets
             coincidencias = gustos_mentores & gustos_mentorizados
             # Por cada gusto de musica igual, se suma 2
             c_puntuacion += PUNTUACION_GUSTOS_MUSICALES * len(coincidencias)
@@ -120,7 +140,10 @@ def comparar_vectores(lista_mentores, lista_mentorizados) -> list[list[int]]:
     return puntuaciones
 
 
-def mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados) -> None:
+def mostrar_tabla(puntuaciones: np.ndarray, nombres_mentores: list[str], nombres_mentorizados: list[str]) -> None:
+    """Imprime la tabla de puntuaciones, con los nombres de los mentores y mentorizados, 
+    y la puntuación de cada pareja"""
+    
     filas = []
     # Guardamos el resultado final:
     for i in range(len(nombres_mentores)):
@@ -128,7 +151,7 @@ def mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados) -> None:
             # Diccionario con Mentor, Mentorizado y Puntuación
             filas.append(
                 {"Mentor": nombres_mentores[i], "Mentorizado": nombres_mentorizados[j], "Puntuación": puntuaciones[i][j]})
-    # Se crea el dataframe con pandas despues del bucle anidado
+    # Se crea el dataframe con pandas 
     tabla_final = pd.DataFrame(filas)
 
     print("\n--- TABLA DE PUNTUACIONES ---\n")
@@ -137,8 +160,11 @@ def mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados) -> None:
     # tabla_final.to_excel(r"RUTA_SALIDA", index=False)
 
 
-def maximizar_matching_hungaro(puntuaciones):
-    puntuaciones = np.array(puntuaciones)
+def maximizar_matching_hungaro(puntuaciones: np.ndarray) -> tuple[list[tuple[int, int]], int]:
+    """Devuelve una lista de tuplas con los indices de los mentores y mentorizados emparejados, 
+    calculandolo con el algoritmo de asignación lineal (Hungaro) """
+    
+    parejas = []
 
     # El algoritmo de asignación lineal (Hungaro) minimiza el coste total,
     # por lo que convertimos las puntuaciones en costes restándolas al valor máximo
@@ -147,14 +173,11 @@ def maximizar_matching_hungaro(puntuaciones):
 
     filas, columnas = linear_sum_assignment(costes)
 
-    suma_total = puntuaciones[filas, columnas].sum()
-
-    parejas = []
-
     for i in range(len(filas)):
         parejas.append((filas[i], columnas[i]))
 
-    return parejas, suma_total
+    return parejas
 
 
-main()
+if __name__ == "__main__":
+    main()
