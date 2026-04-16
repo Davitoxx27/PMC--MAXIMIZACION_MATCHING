@@ -1,4 +1,6 @@
 import os
+from tkinter import Tk
+from tkinter import filedialog
 import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
@@ -25,22 +27,37 @@ def read() -> None:
     
     # Guarda las rutas enteras, cogiendo la ruta del script y añadiendo el
     # nombre del archivo(que debe ser mentores.xlsx y mentorizados.xlsx):
-    base_dir = os.path.dirname(__file__)
-    ruta_excel = os.path.join(base_dir, ARCHIVO_MENTORES)
-    valid = True
+    root = Tk()
+    root.withdraw()
+
+    ruta_excel_mentores: str = filedialog.askopenfilename(
+    title="Selecciona un archivo de Excel para mentores",
+    filetypes=[
+        ("Archivos de Excel", "*.xlsx *.xls *.xlsm"),
+        ("Todos los archivos", "*.*")
+    ]
+)
+    ruta_excel_mentorizados: str = filedialog.askopenfilename(
+    title="Selecciona un archivo de Excel para mentorizados",
+    filetypes=[
+        ("Archivos de Excel", "*.xlsx *.xls *.xlsm"),
+        ("Todos los archivos", "*.*")
+    ]
+)
+
+    valid: bool = True
     try:
         # El lector de excel de pandas devuelve un DataFrame, es decir, las tablas
-        mentores = pd.read_excel(ruta_excel)
+        mentores: pd.DataFrame = pd.read_excel(ruta_excel_mentores)
     except FileNotFoundError:
-        print("El nombre del archivo no es correcto:mentores.xlsx, o no esta el archivo")
+        print("El archivo no es correcto\n")
         valid = False
-    ruta_excel = os.path.join(base_dir, ARCHIVO_MENTORIZADOS)
     try:
-        mentorizados = pd.read_excel(ruta_excel)
+        mentorizados: pd.DataFrame = pd.read_excel(ruta_excel_mentorizados)
     except FileNotFoundError:
-        print(
-            "El nombre del archivo no es correcto:mentorizados.xlsx, o no esta el archivo\n")
+        print("El archivo no es correcto\n")
         valid = False
+
         # Si las columnas de nombre estan vacias, no se puede hacer nada
     if "Nombre" not in mentores.columns or mentores["Nombre"].empty:
         valid = False
@@ -48,6 +65,7 @@ def read() -> None:
         valid = False
     if valid:
         crear_dataframes(mentores, mentorizados)
+        valid = True
     else:
         print("Saliendo del programa...\n")
 
@@ -55,33 +73,36 @@ def read() -> None:
 def crear_dataframes(mentores: pd.DataFrame, mentorizados: pd.DataFrame) -> None:
     """Crea los dataframes con los resultados finales, llamando a las funciones para comparar los vectores"""
     
-    dataframe_final = []
-    lista_mentores = []
-    lista_mentorizados = []
-    nombres_mentores = []
-    nombres_mentorizados = []
+    dataframe_final: list[dict] = []
+    lista_mentores: list[list[str]] = []
+    lista_mentorizados: list[list[str]] = []
+    nombres_mentores: list[str] = []
+    nombres_mentorizados: list[str] = []
 
     # Guardar cada fila como lista, desde columna 3 en adelante y la añade al final de la lista
     for i in range(len(mentores)):
-        vector_mentor = mentores.iloc[i, 3:12].tolist()
+        # Localiza por nombre y luego lo convierte a fila con indices
+        vector_mentor = mentores.loc[i, COLUMNAS_MENTORES].tolist()
+        vector_mentor = mentores[COLUMNAS_MENTORES].iloc[i].tolist()
         
         # Comprobar que tiene 9 columnas (plantilla forms)
-        if len(vector_mentor) == 9:
-            lista_mentores.append(vector_mentor[0:9])
+        if len(vector_mentor) == NUM_COLUMNAS_RESPUESTAS:
+            lista_mentores.append(vector_mentor[0:NUM_COLUMNAS_RESPUESTAS])
             nombres_mentores.append(mentores.at[i, "Nombre"])
         else:
-            print(f"ERROR: Fila {i} de mentores no tiene 9 columnas de respuestas como la plantilla")
+            print(f"ERROR: Fila {i} de mentores no tiene {NUM_COLUMNAS_RESPUESTAS} columnas de respuestas como la plantilla")
             
     for i in range(len(mentorizados)):
-        vector_mentorizados = mentorizados.iloc[i, 3:].tolist()
-        if len(vector_mentorizados) == 9:
-            lista_mentorizados.append(vector_mentorizados[0:9])
+        vector_mentorizados = mentorizados.loc[i, COLUMNAS_MENTORIZADOS].tolist()
+        vector_mentorizados = mentorizados[COLUMNAS_MENTORIZADOS].iloc[i].tolist()
+        if len(vector_mentorizados) == NUM_COLUMNAS_RESPUESTAS:
+            lista_mentorizados.append(vector_mentorizados[0:NUM_COLUMNAS_RESPUESTAS])
             nombres_mentorizados.append(mentorizados.at[i, "Nombre"])
     # Si las listas estan vacias, se devuelve falso
     if lista_mentores and lista_mentorizados:
-        puntuaciones = comparar_vectores(lista_mentores, lista_mentorizados)
+        puntuaciones: np.ndarray = comparar_vectores(lista_mentores, lista_mentorizados)
         mostrar_tabla(puntuaciones, nombres_mentores, nombres_mentorizados)
-        parejas = maximizar_matching_hungaro(puntuaciones)
+        parejas: list[tuple[int, int]] = maximizar_matching_hungaro(puntuaciones)
         print("\n--- MEJOR EMPAREJAMIENTO ---\n")
 
     # Creamos el dataframe de los resultados finales
@@ -99,16 +120,16 @@ def comparar_vectores(lista_mentores: list[list[str]], lista_mentorizados: list[
     """Construye una matriz 2d (n_mentores x n_mentorizados)
        donde cada [i][j] representa la puntuación entre el mentor i y el mentorizado j."""
     
-    num_mentores = len(lista_mentores)
-    num_mentorizados = len(lista_mentorizados)
+    num_mentores: int = len(lista_mentores)
+    num_mentorizados: int = len(lista_mentorizados)
 
-    puntuaciones = np.zeros((num_mentores, num_mentorizados))
+    puntuaciones: np.ndarray = np.zeros((num_mentores, num_mentorizados))
 
     for i in range(num_mentores):
-        mentores = lista_mentores[i]
+        mentores: list[str] = lista_mentores[i]
         for j in range(num_mentorizados):
-            mentorizados = lista_mentorizados[j]
-            c_puntuacion = 0
+            mentorizados: list[str] = lista_mentorizados[j]
+            c_puntuacion: int = 0
 
             if mentores[0] == mentorizados[0]: 
                 c_puntuacion += PUNTUACION_CIUDAD
@@ -129,10 +150,10 @@ def comparar_vectores(lista_mentores: list[list[str]], lista_mentorizados: list[
 
 
             # Convierte los gustos musicales en una lista separada por ; luego en un set que son más fáciles de comparar
-            gustos_mentores = set(str(mentores[8]).split(";"))
-            gustos_mentorizados = set(str(mentorizados[8]).split(";"))
+            gustos_mentores: set[str] = set(str(mentores[8]).split(";"))
+            gustos_mentorizados: set[str] = set(str(mentorizados[8]).split(";"))
             # La función & de sets devuelve la intersec entre ambos sets
-            coincidencias = gustos_mentores & gustos_mentorizados
+            coincidencias: set[str] = gustos_mentores & gustos_mentorizados
             # Por cada gusto de musica igual, se suma 2
             c_puntuacion += PUNTUACION_GUSTOS_MUSICALES * len(coincidencias)
 
@@ -152,7 +173,7 @@ def mostrar_tabla(puntuaciones: np.ndarray, nombres_mentores: list[str], nombres
             filas.append(
                 {"Mentor": nombres_mentores[i], "Mentorizado": nombres_mentorizados[j], "Puntuación": puntuaciones[i][j]})
     # Se crea el dataframe con pandas 
-    tabla_final = pd.DataFrame(filas)
+    tabla_final: pd.DataFrame = pd.DataFrame(filas)
 
     print("\n--- TABLA DE PUNTUACIONES ---\n")
     print(tabla_final)
@@ -164,13 +185,14 @@ def maximizar_matching_hungaro(puntuaciones: np.ndarray) -> tuple[list[tuple[int
     """Devuelve una lista de tuplas con los indices de los mentores y mentorizados emparejados, 
     calculandolo con el algoritmo de asignación lineal (Hungaro) """
     
-    parejas = []
+    parejas: list[tuple[int, int]] = []
 
     # El algoritmo de asignación lineal (Hungaro) minimiza el coste total,
     # por lo que convertimos las puntuaciones en costes restándolas al valor máximo
-    max_val = np.max(puntuaciones)
-    costes = max_val - puntuaciones
-
+    max_val: int = np.max(puntuaciones)
+    costes: np.ndarray = max_val - puntuaciones
+    # Tanto fila como columna representan los indices de los mentores y mentorizados respectivamente
+    # En arrays 2d numpy cada uno
     filas, columnas = linear_sum_assignment(costes)
 
     for i in range(len(filas)):
